@@ -51,7 +51,7 @@ default["kagent"]["watch_interval"]                = 2
 default["kagent"]["pid_file"]                      = node["kagent"]["base_dir"] + "/kagent.pid"
 default["kagent"]["logging_level"]                 = "INFO"
 default["kagent"]["max_log_size"]                  = "10000000"
-default["kagent"]["env_report_freq_in_secs"]       = "10"
+default["kagent"]["env_report_freq_in_secs"]       = "3600"
 
 default["kagent"]["network"]["interface"]          = ""
 
@@ -107,3 +107,4 @@ default["smtp"]["gmail.placeholder"]               = "http://snurran.sics.se/hop
 
 default["services"]["enabled"]                     = ""
 
+default["certs"]["dir"]                            = node["install"]["dir"].empty? ? node["kagent"]["dir"] + "/certs-dir" : node["install"]["dir"] + "/certs-dir"
