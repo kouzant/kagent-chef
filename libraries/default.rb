@@ -21,6 +21,12 @@ module Kagent
       return dns_lookup(ip)
     end
 
+    def hops_groups()
+      group node["kagent"]["certs_group"] do
+        action :create
+        not_if "getent group #{node["kagent"]["certs_group"]}"
+      end
+    end
 
     def my_private_ip()
       if node.attribute?("private_ips") == false || node["private_ips"].empty?      
