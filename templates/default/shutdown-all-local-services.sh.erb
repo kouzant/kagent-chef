@@ -70,13 +70,15 @@ echo -e ""
 
 # Shut down the services in the correct order
 
+active="telegraf"
+stop
 active="kagent"
 stop
 active="historyserver"
 stop
 active="sparkhistoryserver"
 stop
-active="elasticsearch-hopsworks"
+active="elasticsearch"
 stop
 active="livy"
 stop
@@ -95,8 +97,6 @@ stop
 active="logstash"
 stop
 active="kibana"
-stop
-active="filebeat"
 stop
 active="namenode"
 stop

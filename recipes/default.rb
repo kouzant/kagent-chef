@@ -60,7 +60,7 @@ else # sysv
     supports :restart => true, :start => true, :stop => true, :enable => true
     action :nothing
   end
-
+  
   template "/etc/init.d/#{service_name}" do
     source "#{service_name}.erb"
     owner "root"
@@ -72,6 +72,10 @@ end
     notifies :restart, "service[#{service_name}]", :delayed
   end
 
+  kagent_config do
+    action :systemd_reload
+  end
+  
 end
 
 private_ip = my_private_ip()
@@ -146,22 +150,38 @@ end
 
 # Default to hostname found in /etc/hosts, but allow user to override it.
 hostname = node['hostname']
-if node["kagent"].attribute?("hostname") then
+if node["kagent"].attribute?("hostname") 
  hostname = node["kagent"]["hostname"]
 end
 
+
+hops_dir=node['install']['dir']
+if node.attribute?("hops") && node["hops"].attribute?("dir") 
+  hops_dir=node['hops']['dir']
+end
+if hops_dir == "" 
+ # Guess that it is the default value
+ hops_dir = "/srv/hops/hadoop"
+end
+#
+# use :create_if_missing, as if there is a failure during/after the csr.py program,
+# you will get a failure. csr.py adds a password entry to the [agent] section. 
+# The file will be created without the agent->pasword if it is re-run and the password will be lost. 
+#
 template "#{node["kagent"]["base_dir"]}/config.ini" do
   source "config.ini.erb"
   owner node["kagent"]["user"]
   group node["kagent"]["group"]
   mode 0600
+  action :create_if_missing
   variables({
               :rest_url => "http://#{dashboard_endpoint}/",
               :rack => '/default',
               :public_ip => public_ip,
               :private_ip => private_ip,
               :hostname => hostname,
-              :network_if => network_if
+              :network_if => network_if,
+              :hops_dir => hops_dir
             })
 if node["services"]["enabled"] == "true"  
   notifies :enable, "service[#{service_name}]"
@@ -202,3 +222,12 @@ if node["kagent"]["allow_ssh_access"] == 'true'
 end
 
 
+
+if node["kagent"]["cleanup_downloads"] == 'true'
+
+  file "/tmp/#{d}*.tgz" do
+    action :delete
+    ignore_failure true
+  end
+
+end
