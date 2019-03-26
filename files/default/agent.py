@@ -75,15 +75,10 @@ def count_num_gpus():
         return len(stdout_list)-1
     except Exception as err:
         return 0
-
-def create_log_dir_if_not(kconfig):
-    log_dir = kconfig.agent_log_dir
-    if not os.path.isdir(log_dir):
-        os.makedirs(log_dir)
         
 # logging
 def setupLogging(kconfig):
-    agent_log_file = os.path.join(kconfig.agent_log_dir, AGENT_LOG_FILENAME)
+    agent_log_file = kconfig.agent_log_file
     try:
         os.remove(agent_log_file + '.1')
     except:
@@ -122,15 +117,6 @@ def setupLogging(kconfig):
     logger.info("Hostname: {0}".format(kconfig.hostname))
     logger.info("Public IP: {0}".format(kconfig.public_ip))
     logger.info("Private IP: {0}".format(kconfig.private_ip))
-
-def prepare_conda_commands_logger(kconfig):
-    logger = logging.getLogger(CONDA_COMMANDS_LOGGER_NAME)
-    logger.setLevel(logging.INFO)
-    file_handler = logging.handlers.RotatingFileHandler(os.path.join(kconfig.agent_log_dir, "conda_commands.log"))
-    file_handler.setLevel(logging.INFO)
-    formatter = logging.Formatter('%(asctime)s %(levelname)s %(message)s')
-    file_handler.setFormatter(formatter)
-    logger.addHandler(file_handler)
     
 ## Antonis: This should go away in the future!!! Used only by RESTCommandHandler execute
 # reading services
@@ -346,14 +332,10 @@ class Heartbeat():
                 logger.error("{0}. Retrying in {1} seconds...".format(err, kconfig.heartbeat_interval))
                 logged_in = False
 
-CONDA_COMMAND_LOG_PATTERN = "{project_name} {operation} {artifact} {artifact_version} {exit_code} {return_message}"
-CONDA_COMMANDS_LOGGER_NAME = __name__ + "/conda_commands"
-
 class CondaCommandsHandler:
     def __init__(self, conda_commands_status, conda_commands_status_mutex):
         self._conda_commands_status = conda_commands_status
         self._conda_commands_status_mutex = conda_commands_status_mutex
-        self._commands_logger = logging.getLogger(CONDA_COMMANDS_LOGGER_NAME)
 
     def handle(self, command):
         global conda_ongoing
@@ -380,16 +362,6 @@ class CondaCommandsHandler:
                 logger.error("Unkown command OP: {0} Ignoring...".format(op))
         else:
             logger.warn("Conda busy executing a command for project: {0}".format(proj))
-
-
-    def _log_conda_command(self, project_name, operation, artifact, artifact_version, exit_code, return_message):
-        log = CONDA_COMMAND_LOG_PATTERN.format(project_name=project_name.strip().lower(),
-                                               operation=operation.strip(),
-                                               artifact=artifact.strip(),
-                                               artifact_version=artifact_version,
-                                               exit_code=exit_code,
-                                               return_message=return_message.strip())
-        self._commands_logger.info(log)
         
     def _envOp(self, command, arg, offline):
         global conda_ongoing
@@ -413,15 +385,12 @@ class CondaCommandsHandler:
         logger.info("sudo {0} {1} {2} {3} {4} '{5}' {6} {7}".format(script, user, op, proj, arg, offline, kconfig.hadoop_home, install_jupyter))
         msg=""
         try:
-            self._log_conda_command(proj, op, proj, arg, -1, 'WORKING')
             msg = subprocess.check_output(['sudo', script, user, op, proj, arg, offline, kconfig.hadoop_home, install_jupyter], stderr=subprocess.STDOUT)
             command['status'] = 'SUCCESS'
             command['arg'] = arg
-            self._log_conda_command(proj, op, proj, arg, 0, 'SUCCESS')
         except subprocess.CalledProcessError as e:
             logger.warn("Exception in envOp {0}".format(e.output))
             logger.warn("Exception in envOp. Ret code: {0}".format(e.returncode))
-            self._log_conda_command(proj, op, proj, arg, e.returncode, e.output)
             command['status'] = 'FAILED'
         finally:
             if command['op'] == 'YML' and tempfile_fd != None:
@@ -453,16 +422,13 @@ class CondaCommandsHandler:
         try:
             command_str = "sudo {0} {1} {2} {3} {4} {5} {6} {7}".format(script, user, op, proj, channelUrl, installType, lib, version)
             logger.info("Executing libOp command {0}".format(command_str))
-            self._log_conda_command(proj, op, lib, version, -1, 'WORKING')
             msg = subprocess.check_output(['sudo', script, user, op, proj, channelUrl, installType, lib, version], stderr=subprocess.STDOUT)
             logger.info("Lib op finished without error.")
             logger.info("{0}".format(msg))
             command['status'] = 'SUCCESS'
-            self._log_conda_command(proj, op, lib, version, 0, 'SUCCESS')
         except subprocess.CalledProcessError as e:
             logger.warn("Exception in libOp {0}".format(e.output))
             logger.warn("Exception in libOp. Ret code: {0}".format(e.returncode))
-            self._log_conda_command(proj, op, lib, version, e.returncode, e.output)
             command['status'] = 'FAILED'
         finally:
             conda_ongoing[proj] = False
@@ -866,9 +832,7 @@ if __name__ == '__main__':
     kconfig = KConfig(args.config)
     kconfig.read_conf()
 
-    create_log_dir_if_not(kconfig)
     setupLogging(kconfig)
-    prepare_conda_commands_logger(kconfig)
     readServicesFile()
         
     hw_http_client = kagent_utils.Http(kconfig)
