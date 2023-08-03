@@ -4,12 +4,12 @@
 
 bash 'wait' do
   user 'root'
+  timeout 180
   code <<-EOH
-    sleep 180s
+    sleep 190s
   EOH
 end
 
-raise ">>>>>>> FAIL !!!!!!"
 
 # If FQDN is longer than 63 characters fail HOPSWORKS-1075
 fqdn = node['fqdn']
