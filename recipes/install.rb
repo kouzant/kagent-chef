@@ -2,6 +2,12 @@
 ## Do sanity checks here, fail fast ##
 ######################################
 
+bash 'wait' do
+  user 'root'
+  code <<-EOH
+    sleep 180s
+  EOH
+end
 
 raise ">>>>>>> FAIL !!!!!!"
 
