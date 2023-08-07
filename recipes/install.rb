@@ -4,9 +4,9 @@
 
 bash 'wait' do
   user 'root'
-  timeout 180
+  timeout 80
   code <<-EOH
-    sleep 190s
+    sleep 90s
   EOH
 end
 
